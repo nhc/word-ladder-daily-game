@@ -2,7 +2,7 @@
 
 A fun and challenging word puzzle game built with Next.js, React, and PixiJS.
 
-<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" alt="Word Ladder Game Screenshot" width="600">
+![Word Ladder Game Screenshot](./screenshot.png)
 
 ## 🎮 How to Play
 
