@@ -1,7 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import OpenAI from "openai";
 
 export const dynamic = "force-dynamic";
+
+// Validate that each word differs by exactly 1 letter from the previous
+const validateWordLadder = (wordSequence: string[]): boolean => {
+  for (let i = 0; i < wordSequence.length - 1; i++) {
+    const currentWord = wordSequence[i].toLowerCase();
+    const nextWord = wordSequence[i + 1].toLowerCase();
+
+    if (currentWord.length !== 5 || nextWord.length !== 5) {
+      return false;
+    }
+
+    let differences = 0;
+    for (let j = 0; j < 5; j++) {
+      if (currentWord[j] !== nextWord[j]) {
+        differences++;
+      }
+    }
+
+    if (differences !== 1) {
+      return false;
+    }
+  }
+  return true;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +85,11 @@ Example of a correct sequence:
 - wordSequence: ["plant", "plane", "plate", "blate", "blaze", "blame"]
 - Each word differs from the previous by exactly 1 letter`;
 
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: process.env.OPEN_AI_API_KEY,
+    });
+
     // Try to generate a valid puzzle with retries
     let puzzleData;
     let attempts = 0;
@@ -68,36 +98,21 @@ Example of a correct sequence:
     while (attempts < maxAttempts) {
       attempts++;
 
-      const response = await fetch(
-        "https://apps.abacus.ai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.ABACUSAI_API_KEY}`,
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Generate a ${difficulty} word ladder puzzle for ${date}`,
           },
-          body: JSON.stringify({
-            model: "gpt-4.1-mini",
-            messages: [
-              { role: "system", content: systemPrompt },
-              {
-                role: "user",
-                content: `Generate a ${difficulty} word ladder puzzle for ${date}`,
-              },
-            ],
-            response_format: { type: "json_object" },
-            max_tokens: 1000,
-            temperature: 0.7,
-          }),
-        }
-      );
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1000,
+        temperature: 0.7,
+      });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate puzzle");
-      }
-
-      const data = await response.json();
-      puzzleData = JSON.parse(data.choices[0].message.content);
+      puzzleData = JSON.parse(response.choices[0].message.content!);
 
       // Validate the puzzle data
       if (
@@ -116,6 +131,11 @@ Example of a correct sequence:
 
       // Check that startWord matches first word in sequence
       if (puzzleData.startWord !== puzzleData.wordSequence[0]) {
+        continue;
+      }
+
+      // Validate that each word differs by exactly 1 letter from the previous
+      if (!validateWordLadder(puzzleData.wordSequence)) {
         continue;
       }
 

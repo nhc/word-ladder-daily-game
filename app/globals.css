@@ -161,6 +161,39 @@
   font-weight: 600 !important;
   line-height: 1.4 !important;
   margin: 16px !important;
+  cursor: pointer !important;
+}
+
+/* Hide the close button */
+.toast-custom [data-close-button] {
+  display: none !important;
+}
+
+/* Make entire toast clickable */
+.toast-custom {
+  user-select: none !important;
+}
+
+.toast-custom:hover {
+  opacity: 0.9 !important;
+  transform: scale(1.02) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Add click-to-dismiss functionality */
+[data-sonner-toast] {
+  cursor: pointer !important;
+}
+
+[data-sonner-toast]:hover {
+  opacity: 0.9 !important;
+  transform: scale(1.02) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Add click handler via CSS - this will be handled by JavaScript */
+[data-sonner-toast] {
+  pointer-events: auto !important;
 }
 
 /* Mobile responsive toast styles */

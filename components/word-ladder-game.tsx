@@ -273,9 +273,9 @@ export default function WordLadderGame({
         </CardHeader>
       </Card>
 
-      {/* Game Area */}
-      <Card>
-        <CardContent className="p-6">
+      {/* Game Area with Overlay Controls */}
+      <Card className="relative">
+        <CardContent className="p-6 pb-20">
           {gameState.completed ? (
             <div className="text-center py-8">
               <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
@@ -372,38 +372,45 @@ export default function WordLadderGame({
                   <p className="text-lg">{currentClue}</p>
                 </div>
               )}
+
+              {/* Overlay Controls */}
+              {!gameState.completed && (
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-black/80 backdrop-blur-sm rounded-lg p-3">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleHint}
+                      disabled={!currentClue}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      <Lightbulb className="h-4 w-4 mr-2" />
+                      Hint ({gameState.hintsUsed})
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetGame}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBack}
+                    className="text-white hover:bg-white/20"
+                  >
+                    Back to Menu
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>
       </Card>
-
-      {/* Controls */}
-      {!gameState.completed && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleHint}
-                  disabled={!currentClue}
-                >
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  Hint ({gameState.hintsUsed})
-                </Button>
-                <Button variant="outline" size="sm" onClick={resetGame}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onBack}>
-                Back to Menu
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

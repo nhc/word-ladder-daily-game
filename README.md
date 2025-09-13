@@ -42,7 +42,7 @@ PLANT → PLANE → PLATE → SLATE → SLANT
 - **Graphics**: PixiJS for interactive letter rendering
 - **Database**: PostgreSQL (Neon) with Prisma ORM
 - **Styling**: Tailwind CSS
-- **AI**: Abacus.ai for puzzle generation
+- **AI**: OpenAI GPT-4 for puzzle generation
 - **Validation**: Free Dictionary API for word checking
 
 ## 🚀 Getting Started
@@ -64,7 +64,7 @@ pnpm install
 
 # Set up environment variables
 cp .env.example .env
-# Add your DATABASE_URL and ABACUSAI_API_KEY
+# Add your DATABASE_URL and OPEN_AI_API_KEY
 
 # Set up the database
 pnpm db:generate
@@ -79,7 +79,7 @@ pnpm dev
 
 ```env
 DATABASE_URL="postgresql://username:password@host:port/database"
-ABACUSAI_API_KEY="your_api_key_here"
+OPEN_AI_API_KEY="your_openai_api_key_here"
 ```
 
 ## 🎯 Game Mechanics
@@ -92,7 +92,7 @@ ABACUSAI_API_KEY="your_api_key_here"
 
 ### Puzzle Generation
 
-- **AI-powered** puzzle creation using Abacus.ai
+- **AI-powered** puzzle creation using OpenAI GPT-4
 - **Validation checks** to ensure valid word ladders
 - **Retry mechanism** for quality assurance
 - **Daily caching** to avoid regeneration
@@ -177,7 +177,7 @@ app/
 ### Environment Variables for Production
 
 - `DATABASE_URL`: Your Neon PostgreSQL connection string
-- `ABACUSAI_API_KEY`: Your Abacus.ai API key
+- `OPEN_AI_API_KEY`: Your OpenAI API key
 
 ## 🤝 Contributing
 
@@ -194,7 +194,7 @@ This project is licensed under the MIT License.
 ## 🙏 Acknowledgments
 
 - **Free Dictionary API** for word validation
-- **Abacus.ai** for puzzle generation
+- **OpenAI** for puzzle generation
 - **PixiJS** for interactive graphics
 - **Neon** for PostgreSQL hosting
 - **Vercel** for deployment platform
