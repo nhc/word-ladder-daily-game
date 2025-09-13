@@ -47,7 +47,6 @@ const PixiGame = ({
 
     // Initialize PIXI Application
     const initializeApp = async () => {
-      console.log("Initializing PixiJS app...");
       const app = new PIXI.Application();
 
       await app.init({
@@ -58,8 +57,6 @@ const PixiGame = ({
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
       });
-
-      console.log("PixiJS app initialized, canvas:", app.canvas);
 
       // Style the canvas
       app.canvas.style.display = "block";
@@ -73,11 +70,11 @@ const PixiGame = ({
       const highlight = new PIXI.Graphics();
       app.stage.addChild(highlight);
       highlightRef.current = highlight;
-
-      console.log("PixiJS setup complete");
     };
 
-    initializeApp().catch(console.error);
+    initializeApp().catch(() => {
+      // Handle initialization error silently
+    });
 
     // Cleanup function
     return () => {
@@ -94,7 +91,6 @@ const PixiGame = ({
   useEffect(() => {
     if (!appRef.current || !currentWord) return;
 
-    console.log("Creating letters for word:", currentWord);
     const app = appRef.current;
 
     // Clear existing letter sprites

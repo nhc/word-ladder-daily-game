@@ -67,7 +67,6 @@ Example of a correct sequence:
 
     while (attempts < maxAttempts) {
       attempts++;
-      console.log(`Puzzle generation attempt ${attempts}/${maxAttempts}`);
 
       const response = await fetch(
         "https://apps.abacus.ai/v1/chat/completions",
@@ -106,33 +105,21 @@ Example of a correct sequence:
         !puzzleData.wordSequence ||
         !puzzleData.clues
       ) {
-        console.log(`Attempt ${attempts}: Invalid puzzle data structure`);
         continue;
       }
 
       // Check for duplicates in word sequence
       const uniqueWords = new Set(puzzleData.wordSequence);
       if (uniqueWords.size !== puzzleData.wordSequence.length) {
-        console.log(
-          `Attempt ${attempts}: Word sequence contains duplicates:`,
-          puzzleData.wordSequence
-        );
         continue;
       }
 
       // Check that startWord matches first word in sequence
       if (puzzleData.startWord !== puzzleData.wordSequence[0]) {
-        console.log(
-          `Attempt ${attempts}: Start word does not match first word in sequence`
-        );
         continue;
       }
 
       // If we get here, the puzzle is valid
-      console.log(
-        `Valid puzzle generated on attempt ${attempts}:`,
-        puzzleData.wordSequence
-      );
       break;
     }
 

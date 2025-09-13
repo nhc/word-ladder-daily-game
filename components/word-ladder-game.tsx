@@ -78,9 +78,6 @@ export default function WordLadderGame({
       if (!response.ok) throw new Error("Failed to fetch puzzle");
 
       const puzzle = await response.json();
-      console.log("Loaded puzzle:", puzzle);
-      console.log("Word sequence:", puzzle.wordSequence);
-      console.log("Clues:", puzzle.clues);
 
       setGameState((prev) => ({
         ...prev,
@@ -104,18 +101,7 @@ export default function WordLadderGame({
 
   const handleLetterClick = useCallback(
     async (letterIndex: number, newLetter: string) => {
-      console.log("handleLetterClick called:", {
-        letterIndex,
-        newLetter,
-        gameState,
-      });
-
       if (!gameState.puzzle || gameState.completed || gameState.loading) {
-        console.log("Early return:", {
-          puzzle: !!gameState.puzzle,
-          completed: gameState.completed,
-          loading: gameState.loading,
-        });
         return;
       }
 
@@ -128,15 +114,6 @@ export default function WordLadderGame({
       // So if we're on step 0, we want wordSequence[1], if on step 1, we want wordSequence[2], etc.
       const expectedWord =
         gameState.puzzle.wordSequence[gameState.currentStep + 1];
-
-      console.log("Word validation:", {
-        currentWord: gameState.currentWord,
-        newWord,
-        expectedWord,
-        currentStep: gameState.currentStep,
-        wordSequence: gameState.puzzle.wordSequence,
-        wordSequenceLength: gameState.puzzle.wordSequence.length,
-      });
 
       try {
         const response = await fetch("/api/validate-word", {
@@ -151,7 +128,6 @@ export default function WordLadderGame({
         });
 
         const validation = await response.json();
-        console.log("Validation response:", validation);
 
         if (validation.isCorrect) {
           // Correct word!
@@ -335,7 +311,6 @@ export default function WordLadderGame({
                             : "border-blue-800"
                         }`}
                         onClick={() => {
-                          console.log("Letter clicked:", { index, letter });
                           setShowLetterPicker({ index, letter });
                         }}
                       >
@@ -372,10 +347,6 @@ export default function WordLadderGame({
                             key={letter}
                             className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded border-2 border-blue-800"
                             onClick={() => {
-                              console.log("Letter selected:", {
-                                index: showLetterPicker.index,
-                                letter,
-                              });
                               handleLetterClick(showLetterPicker.index, letter);
                               setShowLetterPicker(null);
                             }}
