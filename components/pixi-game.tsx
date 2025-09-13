@@ -23,6 +23,7 @@ const PixiGame = ({
   useEffect(() => {
     if (
       highlightedLetter !== null &&
+      highlightedLetter !== undefined &&
       highlightRef.current &&
       letterSpritesRef.current[highlightedLetter]
     ) {
