@@ -1,0 +1,37 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/word_ladder_game/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model DailyPuzzle {
+  id           String   @id @default(cuid())
+  date         String   // Format: YYYY-MM-DD
+  difficulty   String   // "easy" or "hard"
+  startWord    String
+  wordSequence Json     // Array of words in the ladder
+  clues        Json     // Array of clues for each transformation
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([date, difficulty])
+  @@map("daily_puzzles")
+}
+
+model GameSession {
+  id            String   @id @default(cuid())
+  puzzleId      String
+  currentStep   Int      @default(0)
+  hintsUsed     Int      @default(0)
+  completed     Boolean  @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("game_sessions")
+}
