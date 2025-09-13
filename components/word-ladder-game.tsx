@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, RotateCcw, Trophy, Clock } from "lucide-react";
-import { toast } from "sonner";
+import MessageModal from "./message-modal";
 
 // Dynamically import PixiJS to avoid SSR issues
 const PixiGame = dynamic(() => import("./pixi-game"), {
@@ -67,6 +67,37 @@ export default function WordLadderGame({
     letter: string;
   } | null>(null);
 
+  // Modal state
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: "success" | "error" | "info";
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
+
+  // Helper function to show modal
+  const showModal = (
+    type: "success" | "error" | "info",
+    title: string,
+    message: string
+  ) => {
+    setModalState({
+      isOpen: true,
+      type,
+      title,
+      message,
+    });
+  };
+
+  const closeModal = () => {
+    setModalState((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // Fetch daily puzzle
   const fetchPuzzle = useCallback(async () => {
     try {
@@ -90,7 +121,7 @@ export default function WordLadderGame({
       }));
     } catch (error) {
       console.error("Error fetching puzzle:", error);
-      toast.error("Failed to load puzzle. Please try again.");
+      showModal("error", "Failed to Load Puzzle", "Please try again.");
       setGameState((prev) => ({ ...prev, loading: false }));
     }
   }, [difficulty]);
@@ -143,25 +174,33 @@ export default function WordLadderGame({
           }));
 
           if (isCompleted) {
-            toast.success("Congratulations! Puzzle completed!", {
-              icon: "🎉",
-            });
+            showModal("success", "Congratulations! 🎉", "Puzzle completed!");
             setTimeout(() => {
               onComplete();
             }, 2000);
           } else {
-            toast.success("Correct! Moving to next clue.", {
-              icon: "✅",
-            });
+            showModal("success", "Correct! ✅", "Moving to next clue.");
           }
         } else if (!validation.isValidWord) {
-          toast.error("Not a valid English word. Try again!");
+          showModal(
+            "error",
+            "Invalid Word",
+            "Not a valid English word. Try again!"
+          );
         } else {
-          toast.error("Close! But that's not the word we're looking for.");
+          showModal(
+            "error",
+            "Close!",
+            "But that's not the word we're looking for."
+          );
         }
       } catch (error) {
         console.error("Error validating word:", error);
-        toast.error("Error validating word. Please try again.");
+        showModal(
+          "error",
+          "Validation Error",
+          "Error validating word. Please try again."
+        );
       }
     },
     [gameState, onComplete]
@@ -190,9 +229,7 @@ export default function WordLadderGame({
           hintsUsed: prev.hintsUsed + 1,
         }));
 
-        toast.info(`Hint: Change the letter at position ${i + 1}`, {
-          icon: "💡",
-        });
+        showModal("info", "Hint 💡", `Change the letter at position ${i + 1}`);
 
         // Clear highlight after 3 seconds
         setTimeout(() => {
@@ -255,10 +292,15 @@ export default function WordLadderGame({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Daily Word Ladder
-            </CardTitle>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+              <CardTitle className="text-sm sm:text-base">
+                Daily Word Ladder
+              </CardTitle>
+            </button>
             <div className="flex items-center gap-2">
               <Badge
                 variant={difficulty === "hard" ? "destructive" : "default"}
@@ -275,7 +317,7 @@ export default function WordLadderGame({
 
       {/* Game Area with Overlay Controls */}
       <Card className="relative">
-        <CardContent className="p-6 pb-20">
+        <CardContent className="p-2 md:p-6 pb-20">
           {gameState.completed ? (
             <div className="text-center py-8">
               <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
@@ -295,33 +337,71 @@ export default function WordLadderGame({
             </div>
           ) : (
             <>
-              {/* Temporary fallback while debugging PixiJS */}
-              <div className="w-full h-96 bg-gray-800 rounded-lg flex items-center justify-center mb-4">
-                <div className="text-white text-center">
-                  <p className="text-lg mb-4">
-                    Current Word: {gameState.currentWord}
-                  </p>
-                  <div className="flex gap-2 justify-center">
-                    {gameState.currentWord.split("").map((letter, index) => (
-                      <button
-                        key={index}
-                        className={`w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg border-2 ${
-                          highlightedLetter === index
-                            ? "border-yellow-400 bg-yellow-600"
-                            : "border-blue-800"
-                        }`}
-                        onClick={() => {
-                          setShowLetterPicker({ index, letter });
-                        }}
-                      >
-                        {letter}
-                      </button>
-                    ))}
+              {/* Word Box with Controls */}
+              <div className="relative w-full h-96 bg-gray-800 rounded-lg mb-4">
+                {/* Main word display */}
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-white text-center">
+                    <p className="text-lg mb-4">
+                      Current Word: {gameState.currentWord}
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      {gameState.currentWord.split("").map((letter, index) => (
+                        <button
+                          key={index}
+                          className={`w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg border-2 ${
+                            highlightedLetter === index
+                              ? "border-yellow-400 bg-yellow-600"
+                              : "border-blue-800"
+                          }`}
+                          onClick={() => {
+                            setShowLetterPicker({ index, letter });
+                          }}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-sm mt-4 text-gray-300">
+                      Click a letter to change it
+                    </p>
                   </div>
-                  <p className="text-sm mt-4 text-gray-300">
-                    Click a letter to change it
-                  </p>
                 </div>
+
+                {/* Controls Panel at Bottom */}
+                {!gameState.completed && (
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-black/80 backdrop-blur-sm rounded-lg p-3">
+                    <div className="flex gap-3 sm:gap-2 justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleHint}
+                        disabled={!currentClue}
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      >
+                        <Lightbulb className="h-4 w-4 mr-2" />
+                        Hint ({gameState.hintsUsed})
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetGame}
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onBack}
+                      className="text-white hover:bg-white/20 hidden md:flex"
+                    >
+                      Back to Menu
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* PixiJS Game - temporarily commented out for debugging */}
@@ -372,45 +452,21 @@ export default function WordLadderGame({
                   <p className="text-lg">{currentClue}</p>
                 </div>
               )}
-
-              {/* Overlay Controls */}
-              {!gameState.completed && (
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-black/80 backdrop-blur-sm rounded-lg p-3">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleHint}
-                      disabled={!currentClue}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                    >
-                      <Lightbulb className="h-4 w-4 mr-2" />
-                      Hint ({gameState.hintsUsed})
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={resetGame}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Reset
-                    </Button>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onBack}
-                    className="text-white hover:bg-white/20"
-                  >
-                    Back to Menu
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </CardContent>
       </Card>
+
+      {/* Message Modal */}
+      <MessageModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        autoClose={modalState.type === "success"}
+        autoCloseDelay={2000}
+      />
     </div>
   );
 }
