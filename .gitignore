@@ -99,3 +99,7 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# SQLite database
+*.db
+*.db-journal
