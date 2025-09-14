@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "puzzles:generate": "tsx --require dotenv/config scripts/autogenerate-puzzles.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

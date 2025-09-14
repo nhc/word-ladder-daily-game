@@ -5,7 +5,7 @@ import MainMenu from "@/components/main-menu";
 import WordLadderGame from "@/components/word-ladder-game";
 
 type GameState = "menu" | "playing";
-type Difficulty = "easy" | "hard";
+type Difficulty = "easy" | "hard" | "extra-hard";
 
 export default function HomePage() {
   const [gameState, setGameState] = useState<GameState>("menu");

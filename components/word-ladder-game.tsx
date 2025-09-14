@@ -40,7 +40,7 @@ interface GameState {
 }
 
 interface WordLadderGameProps {
-  difficulty: "easy" | "hard";
+  difficulty: "easy" | "hard" | "extra-hard";
   onComplete: () => void;
   onBack: () => void;
 }
@@ -66,6 +66,61 @@ export default function WordLadderGame({
     index: number;
     letter: string;
   } | null>(null);
+
+  // For extra hard mode: track which letters need to be changed
+  const [lettersToChange, setLettersToChange] = useState<Set<number>>(
+    new Set()
+  );
+  const [currentLetterIndex, setCurrentLetterIndex] = useState<number | null>(
+    null
+  );
+  const [showHintLetters, setShowHintLetters] = useState<boolean>(false);
+
+  // Calculate which letters need to be changed for extra hard mode
+  const calculateLettersToChange = useCallback(() => {
+    if (
+      difficulty !== "extra-hard" ||
+      !gameState.puzzle ||
+      gameState.completed
+    ) {
+      return;
+    }
+
+    const currentWord = gameState.currentWord.toLowerCase();
+    const targetWord =
+      gameState.puzzle.wordSequence[gameState.currentStep + 1].toLowerCase();
+
+    const lettersToChangeSet = new Set<number>();
+
+    // Find the minimum length to compare
+    const minLength = Math.min(currentWord.length, targetWord.length);
+
+    // Check each position
+    for (let i = 0; i < minLength; i++) {
+      if (currentWord[i] !== targetWord[i]) {
+        lettersToChangeSet.add(i);
+      }
+    }
+
+    // Add positions for extra characters in longer word
+    if (currentWord.length > targetWord.length) {
+      for (let i = minLength; i < currentWord.length; i++) {
+        lettersToChangeSet.add(i);
+      }
+    } else if (targetWord.length > currentWord.length) {
+      for (let i = minLength; i < targetWord.length; i++) {
+        lettersToChangeSet.add(i);
+      }
+    }
+
+    setLettersToChange(lettersToChangeSet);
+  }, [
+    difficulty,
+    gameState.puzzle,
+    gameState.currentWord,
+    gameState.currentStep,
+    gameState.completed,
+  ]);
 
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -130,6 +185,11 @@ export default function WordLadderGame({
     fetchPuzzle();
   }, [fetchPuzzle]);
 
+  // Calculate letters to change when game state changes
+  useEffect(() => {
+    calculateLettersToChange();
+  }, [calculateLettersToChange]);
+
   const handleLetterClick = useCallback(
     async (letterIndex: number, newLetter: string) => {
       if (!gameState.puzzle || gameState.completed || gameState.loading) {
@@ -140,38 +200,35 @@ export default function WordLadderGame({
       currentWordArray[letterIndex] = newLetter.toUpperCase();
       const newWord = currentWordArray.join("");
 
-      // Validate the word change
-      // The word sequence should include all words including the starting word
-      // So if we're on step 0, we want wordSequence[1], if on step 1, we want wordSequence[2], etc.
-      const expectedWord =
-        gameState.puzzle.wordSequence[gameState.currentStep + 1];
+      // For extra hard mode, check if this single change gets us closer to the target
+      if (difficulty === "extra-hard") {
+        const targetWord =
+          gameState.puzzle.wordSequence[
+            gameState.currentStep + 1
+          ].toLowerCase();
 
-      try {
-        const response = await fetch("/api/validate-word", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            word: newWord.toLowerCase(),
-            expectedWord: expectedWord.toLowerCase(),
-          }),
-        });
+        // Update the current word
+        setGameState((prev) => ({
+          ...prev,
+          currentWord: newWord,
+        }));
 
-        const validation = await response.json();
-
-        if (validation.isCorrect) {
-          // Correct word!
+        // Check if we've reached the target word
+        if (newWord.toLowerCase() === targetWord) {
           const nextStep = gameState.currentStep + 1;
           const isCompleted =
             nextStep >= gameState.puzzle.wordSequence.length - 1;
 
           setGameState((prev) => ({
             ...prev,
-            currentWord: newWord,
             currentStep: nextStep,
             completed: isCompleted,
           }));
+
+          // Reset hint state for extra hard mode when advancing to next step
+          if (difficulty === "extra-hard") {
+            setShowHintLetters(false);
+          }
 
           if (isCompleted) {
             showModal("success", "Congratulations! 🎉", "Puzzle completed!");
@@ -179,31 +236,130 @@ export default function WordLadderGame({
               onComplete();
             }, 2000);
           } else {
-            showModal("success", "Correct! ✅", "Moving to next clue.");
+            showModal("success", "Great! 🎯", "Correct word! Keep going!");
+            setTimeout(() => {
+              closeModal();
+            }, 1500);
           }
-        } else if (!validation.isValidWord) {
-          showModal(
-            "error",
-            "Invalid Word",
-            "Not a valid English word. Try again!"
-          );
         } else {
+          // For extra hard mode, check if this change gets us closer to the target
+          const currentWord = gameState.currentWord.toLowerCase();
+          const targetWord =
+            gameState.puzzle.wordSequence[
+              gameState.currentStep + 1
+            ].toLowerCase();
+
+          // Count how many letters match the target in the original word
+          const originalMatches = currentWord
+            .split("")
+            .reduce((count, letter, index) => {
+              return count + (letter === targetWord[index] ? 1 : 0);
+            }, 0);
+
+          // Count how many letters match the target in the new word
+          const newMatches = newWord
+            .toLowerCase()
+            .split("")
+            .reduce((count, letter, index) => {
+              return count + (letter === targetWord[index] ? 1 : 0);
+            }, 0);
+
+          if (newMatches > originalMatches) {
+            // This change gets us closer to the target
+            showModal(
+              "info",
+              "Good progress! 📝",
+              "Keep changing letters to reach the target word."
+            );
+          } else if (newMatches === originalMatches) {
+            // This change doesn't help or hurt
+            showModal(
+              "info",
+              "No change 📝",
+              "This letter change doesn't get you closer to the target word."
+            );
+          } else {
+            // This change makes us further from the target
+            // Revert the change
+            setGameState((prev) => ({
+              ...prev,
+              currentWord: gameState.currentWord,
+            }));
+            showModal(
+              "error",
+              "Wrong direction! ❌",
+              "This letter change takes you away from the target word. Try a different letter."
+            );
+          }
+        }
+      } else {
+        // Original logic for easy/hard mode
+        const expectedWord =
+          gameState.puzzle.wordSequence[gameState.currentStep + 1];
+
+        try {
+          const response = await fetch("/api/validate-word", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              word: newWord.toLowerCase(),
+              expectedWord: expectedWord.toLowerCase(),
+            }),
+          });
+
+          const validation = await response.json();
+
+          if (validation.isCorrect) {
+            const nextStep = gameState.currentStep + 1;
+            const isCompleted =
+              nextStep >= gameState.puzzle.wordSequence.length - 1;
+
+            setGameState((prev) => ({
+              ...prev,
+              currentWord: newWord,
+              currentStep: nextStep,
+              completed: isCompleted,
+            }));
+
+            // Reset hint state for extra hard mode when advancing to next step
+            if (difficulty === "extra-hard") {
+              setShowHintLetters(false);
+            }
+
+            if (isCompleted) {
+              showModal("success", "Congratulations! 🎉", "Puzzle completed!");
+              setTimeout(() => {
+                onComplete();
+              }, 2000);
+            } else {
+              showModal("success", "Correct! ✅", "Moving to next clue.");
+            }
+          } else if (!validation.isValidWord) {
+            showModal(
+              "error",
+              "Invalid Word",
+              "Not a valid English word. Try again!"
+            );
+          } else {
+            showModal(
+              "error",
+              "Close!",
+              "But that's not the word we're looking for."
+            );
+          }
+        } catch (error) {
+          console.error("Error validating word:", error);
           showModal(
             "error",
-            "Close!",
-            "But that's not the word we're looking for."
+            "Validation Error",
+            "Error validating word. Please try again."
           );
         }
-      } catch (error) {
-        console.error("Error validating word:", error);
-        showModal(
-          "error",
-          "Validation Error",
-          "Error validating word. Please try again."
-        );
       }
     },
-    [gameState, onComplete]
+    [gameState, onComplete, difficulty, showModal, closeModal]
   );
 
   const handleHint = useCallback(() => {
@@ -214,34 +370,52 @@ export default function WordLadderGame({
     )
       return;
 
-    const currentWord = gameState.currentWord.toLowerCase();
-    const targetWord =
-      gameState.puzzle.wordSequence[gameState.currentStep + 1].toLowerCase();
+    if (difficulty === "extra-hard") {
+      // For extra hard mode, show which letters need to be changed
+      setShowHintLetters(true);
+      setGameState((prev) => ({
+        ...prev,
+        hintsUsed: prev.hintsUsed + 1,
+      }));
+    } else {
+      // For easy/hard mode, highlight the single letter that needs to change
+      const currentWord = gameState.currentWord.toLowerCase();
+      const targetWord =
+        gameState.puzzle.wordSequence[gameState.currentStep + 1].toLowerCase();
 
-    // Find the different letter
-    for (let i = 0; i < currentWord.length; i++) {
-      if (currentWord[i] !== targetWord[i]) {
-        // Highlight the letter that needs to change
-        setHighlightedLetter(i);
+      // Find the different letter
+      for (let i = 0; i < currentWord.length; i++) {
+        if (currentWord[i] !== targetWord[i]) {
+          // Highlight the letter that needs to change
+          setHighlightedLetter(i);
 
-        setGameState((prev) => ({
-          ...prev,
-          hintsUsed: prev.hintsUsed + 1,
-        }));
+          setGameState((prev) => ({
+            ...prev,
+            hintsUsed: prev.hintsUsed + 1,
+          }));
 
-        showModal("info", "Hint 💡", `Change the letter at position ${i + 1}`);
+          showModal(
+            "info",
+            "Hint 💡",
+            `Change the letter at position ${i + 1}`
+          );
 
-        // Clear highlight after 3 seconds
-        setTimeout(() => {
-          setHighlightedLetter(null);
-        }, 3000);
+          // Clear highlight after 3 seconds
+          setTimeout(() => {
+            setHighlightedLetter(null);
+          }, 3000);
 
-        return;
+          return;
+        }
       }
     }
-  }, [gameState]);
+  }, [gameState, difficulty]);
 
   const resetGame = useCallback(() => {
+    // Reset extra hard mode state
+    setLettersToChange(new Set());
+    setCurrentLetterIndex(null);
+    setShowHintLetters(false);
     fetchPuzzle();
   }, [fetchPuzzle]);
 
@@ -303,9 +477,17 @@ export default function WordLadderGame({
             </button>
             <div className="flex items-center gap-2">
               <Badge
-                variant={difficulty === "hard" ? "destructive" : "default"}
+                variant={
+                  difficulty === "hard"
+                    ? "destructive"
+                    : difficulty === "extra-hard"
+                    ? "destructive"
+                    : "default"
+                }
               >
-                {difficulty.toUpperCase()}
+                {difficulty === "extra-hard"
+                  ? "EXTRA HARD"
+                  : difficulty.toUpperCase()}
               </Badge>
               <Badge variant="outline">
                 Step {gameState.currentStep + 1}/6
@@ -343,16 +525,21 @@ export default function WordLadderGame({
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white text-center">
                     <p className="text-lg mb-4">
-                      Current Word: {gameState.currentWord}
+                      Current Word:{" "}
+                      {gameState.puzzle?.wordSequence[gameState.currentStep]}
                     </p>
                     <div className="flex gap-2 justify-center">
                       {gameState.currentWord.split("").map((letter, index) => (
                         <button
                           key={index}
-                          className={`w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg border-2 ${
+                          className={`w-12 h-12 font-bold rounded-lg border-2 ${
                             highlightedLetter === index
-                              ? "border-yellow-400 bg-yellow-600"
-                              : "border-blue-800"
+                              ? "border-yellow-400 bg-yellow-600 text-white"
+                              : difficulty === "extra-hard" &&
+                                showHintLetters &&
+                                lettersToChange.has(index)
+                              ? "border-purple-400 bg-purple-600 text-white hover:bg-purple-700"
+                              : "border-blue-800 bg-blue-600 text-white hover:bg-blue-700"
                           }`}
                           onClick={() => {
                             setShowLetterPicker({ index, letter });
@@ -363,7 +550,9 @@ export default function WordLadderGame({
                       ))}
                     </div>
                     <p className="text-sm mt-4 text-gray-300">
-                      Click a letter to change it
+                      {difficulty === "extra-hard"
+                        ? `Click a purple letter to change it (${lettersToChange.size} letters need changing)`
+                        : "Click a letter to change it"}
                     </p>
                   </div>
                 </div>

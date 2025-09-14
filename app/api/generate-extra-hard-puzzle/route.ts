@@ -4,26 +4,28 @@ import OpenAI from "openai";
 
 export const dynamic = "force-dynamic";
 
-// Validate that each word differs by exactly 1 letter from the previous
-const validateWordLadder = (wordSequence: string[]): boolean => {
+// Validate extra hard puzzles: same length words, exactly 2-3 letter changes per step
+const validateExtraHardWordLadder = (wordSequence: string[]): boolean => {
+  if (!Array.isArray(wordSequence) || wordSequence.length < 2) return false;
+
+  for (const word of wordSequence) {
+    if (typeof word !== "string") return false;
+    if (word.length < 5 || word.length > 7) return false;
+  }
+
+  const firstLen = wordSequence[0].length;
+  for (const word of wordSequence) {
+    if (word.length !== firstLen) return false;
+  }
+
   for (let i = 0; i < wordSequence.length - 1; i++) {
-    const currentWord = wordSequence[i].toLowerCase();
-    const nextWord = wordSequence[i + 1].toLowerCase();
-
-    if (currentWord.length !== 5 || nextWord.length !== 5) {
-      return false;
+    const a = wordSequence[i].toLowerCase();
+    const b = wordSequence[i + 1].toLowerCase();
+    let diffs = 0;
+    for (let j = 0; j < firstLen; j++) {
+      if (a[j] !== b[j]) diffs++;
     }
-
-    let differences = 0;
-    for (let j = 0; j < 5; j++) {
-      if (currentWord[j] !== nextWord[j]) {
-        differences++;
-      }
-    }
-
-    if (differences !== 1) {
-      return false;
-    }
+    if (diffs < 2 || diffs > 3) return false;
   }
   return true;
 };
@@ -52,25 +54,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate new puzzle using LLM
-    const systemPrompt = `You are a Word Ladder puzzle generator. Create a sequence of 6 five-letter English words where each word differs from the previous by exactly one letter. 
+    const systemPrompt = `You are an Extra Hard Word Ladder puzzle generator. Create a sequence of 6 words with these EXACT requirements:
 
-For ${difficulty} difficulty:
-- Easy: Use common, everyday words that most people would know (like: house, water, light, table, chair, etc.)
-- Hard: Use more challenging vocabulary, less common words, or words that require more thought (like: quirk, fjord, glyph, etc.)
+1) ALL 6 words must be the SAME LENGTH (choose 5, 6, or 7 and keep that length for all words)
+2) Each consecutive word must differ by EXACTLY 2 or 3 letters (no more, no less)
+3) Valid English words only; no duplicates; use challenging vocabulary
+4) Avoid common starters like "house", "water", "light", "stone"
 
-IMPORTANT: Choose a completely different starting word than common words like "stone", "light", "house", "water". Be creative and varied!
-
-Generate a valid word ladder sequence and provide a clue for each transformation (except the starting word). Each clue should clearly describe the target word without being too obvious.
-
-CRITICAL VALIDATION RULES:
-- Each word must be exactly 5 letters
-- Each consecutive word must differ by exactly 1 letter (only one position can change)
-- NO DUPLICATE WORDS in the sequence
-- The wordSequence should include ALL 6 words including the startWord
-- wordSequence[0] = startWord, wordSequence[1] = first target, etc.
-- Example: "plant" → "plane" (only 't' changes to 'e'), "plane" → "plate" (only 'n' changes to 't')
-
-Respond with clean JSON only in this exact format:
+Respond with ONLY valid JSON in this exact format:
 {
   "startWord": "first word",
   "wordSequence": ["word1", "word2", "word3", "word4", "word5", "word6"],
@@ -81,12 +72,7 @@ Respond with clean JSON only in this exact format:
     "Clue for word5",
     "Clue for word6"
   ]
-}
-
-Example of a correct sequence:
-- startWord: "plant"
-- wordSequence: ["plant", "plane", "plate", "blate", "blaze", "blame"]
-- Each word differs from the previous by exactly 1 letter`;
+}`;
 
     // Initialize OpenAI client
     const openai = new OpenAI({
@@ -107,7 +93,7 @@ Example of a correct sequence:
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Generate a ${difficulty} word ladder puzzle for ${date}. Use a unique starting word that's different from common words. Be creative! Respond with ONLY valid JSON in the exact format specified.`,
+            content: `Generate an extra hard word ladder puzzle for ${date}. Choose a single word length (5, 6, or 7) and ensure ALL words stay that length. Each step must change EXACTLY 2 or 3 letters. Respond with ONLY valid JSON in the exact format specified.`,
           },
         ],
         response_format: { type: "json_object" },
@@ -140,23 +126,23 @@ Example of a correct sequence:
         continue;
       }
 
-      // Validate that each word differs by exactly 1 letter from the previous
-      if (!validateWordLadder(puzzleData.wordSequence)) {
+      // Validate that each word differs by exactly 2-3 letters from the previous
+      if (!validateExtraHardWordLadder(puzzleData.wordSequence)) {
         console.log(
-          `Attempt ${attempts}: Word ladder validation failed for sequence:`,
+          `Attempt ${attempts}: Extra hard word ladder validation failed for sequence:`,
           puzzleData.wordSequence
         );
         continue;
       }
 
       // If we get here, the puzzle is valid
-      console.log(`Attempt ${attempts}: Valid puzzle generated!`);
+      console.log(`Attempt ${attempts}: Valid extra hard puzzle generated!`);
       break;
     }
 
     if (attempts >= maxAttempts) {
       throw new Error(
-        `Failed to generate valid puzzle after ${maxAttempts} attempts`
+        `Failed to generate valid extra hard puzzle after ${maxAttempts} attempts`
       );
     }
 
@@ -173,9 +159,9 @@ Example of a correct sequence:
 
     return NextResponse.json(puzzle);
   } catch (error) {
-    console.error("Error generating puzzle:", error);
+    console.error("Error generating extra hard puzzle:", error);
     return NextResponse.json(
-      { error: "Failed to generate puzzle" },
+      { error: "Failed to generate extra hard puzzle" },
       { status: 500 }
     );
   }
