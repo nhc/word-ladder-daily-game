@@ -147,6 +147,35 @@ pnpm db:deploy    # Deploy migrations to production
 pnpm db:seed      # Seed database with sample data
 ```
 
+### Puzzle Generation
+
+Use the generator to create daily puzzles (easy, hard, extra-hard). Existing puzzles for a date/difficulty are skipped.
+
+Single day:
+
+```bash
+# Default: tomorrow
+pnpm puzzles:generate
+
+# Specific day
+pnpm puzzles:generate 2025-09-20
+
+# Today / Tomorrow
+pnpm puzzles:generate today
+pnpm puzzles:generate tomorrow
+```
+
+Week at a time (7 days starting from a base date):
+
+```bash
+# Starting today / tomorrow
+pnpm puzzles:generate week today
+pnpm puzzles:generate week tomorrow
+
+# Starting specific date (YYYY-MM-DD)
+pnpm puzzles:generate week 2025-09-20
+```
+
 ### Project Structure
 
 ```

@@ -57,11 +57,18 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are an Extra Hard Word Ladder puzzle generator. Create a sequence of 6 words with these EXACT requirements:
 
 1) ALL 6 words must be the SAME LENGTH (choose 5, 6, or 7 and keep that length for all words)
-2) Each consecutive word must differ by EXACTLY 2 or 3 letters (no more, no less)
-3) Valid English words only; no duplicates; use challenging vocabulary
+2) Each consecutive word must differ by EXACTLY 2 or 3 letters (Hamming distance, no insertions/deletions)
+3) Valid English words only; no duplicates; avoid proper nouns, hyphens, or rare archaic forms
 4) Avoid common starters like "house", "water", "light", "stone"
 
-Respond with ONLY valid JSON in this exact format:
+Before responding, SELF-CHECK:
+- Start equals first item: startWord === wordSequence[0]
+- Sequence has exactly 6 words; clues has exactly 5 items
+- All words same length L in {5,6,7}
+- For each adjacent pair, Hamming distance is 2 or 3
+- All words are standard English words
+
+Respond with ONLY valid JSON in this exact format (no backticks, no prose):
 {
   "startWord": "first word",
   "wordSequence": ["word1", "word2", "word3", "word4", "word5", "word6"],
@@ -97,11 +104,27 @@ Respond with ONLY valid JSON in this exact format:
           },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 1000,
-        temperature: 0.9,
+        max_completion_tokens: 1200,
       });
 
-      puzzleData = JSON.parse(response.choices[0].message.content!);
+      {
+        const raw = response.choices?.[0]?.message?.content ?? "";
+        try {
+          puzzleData = JSON.parse(raw);
+        } catch (e) {
+          const start = raw.indexOf("{");
+          const end = raw.lastIndexOf("}");
+          if (start !== -1 && end !== -1 && end > start) {
+            const candidate = raw.slice(start, end + 1);
+            puzzleData = JSON.parse(candidate);
+          } else {
+            console.log(
+              `Attempt ${attempts}: Failed to parse JSON (raw length=${raw.length}).`
+            );
+            throw e;
+          }
+        }
+      }
 
       // Validate the puzzle data
       if (

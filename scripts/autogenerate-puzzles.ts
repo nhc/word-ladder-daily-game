@@ -69,7 +69,8 @@ const validateExtraHardWordLadder = (wordSequence: string[]): boolean => {
 const analyzeExtraHardSequence = (wordSequence: string[]) => {
   const lengths = wordSequence.map((w) => w.length);
   const firstLen = lengths[0];
-  const sameLength = lengths.every((l) => l === firstLen) && firstLen >= 5 && firstLen <= 7;
+  const sameLength =
+    lengths.every((l) => l === firstLen) && firstLen >= 5 && firstLen <= 7;
 
   const pairDiffs: number[] = [];
   if (sameLength) {
@@ -194,8 +195,8 @@ Example of a correct sequence:
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const baseParams: any = {
+      model: isExtraHard ? "gpt-5" : "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -206,11 +207,41 @@ Example of a correct sequence:
         },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
-      temperature: 0.7 + attempts * 0.1, // Vary temperature between attempts
-    });
+    };
 
-    puzzleData = JSON.parse(response.choices[0].message.content!);
+    if (isExtraHard) {
+      baseParams.max_completion_tokens = 1200;
+    } else {
+      baseParams.max_tokens = 1000;
+      baseParams.temperature = 0.7 + attempts * 0.1;
+    }
+
+    const response = await openai.chat.completions.create(baseParams);
+
+    const raw = response.choices?.[0]?.message?.content ?? "";
+    try {
+      puzzleData = JSON.parse(raw);
+    } catch (e) {
+      // Attempt to salvage JSON by trimming to first '{' and last '}'
+      const start = raw.indexOf("{");
+      const end = raw.lastIndexOf("}");
+      if (start !== -1 && end !== -1 && end > start) {
+        const candidate = raw.slice(start, end + 1);
+        try {
+          puzzleData = JSON.parse(candidate);
+        } catch (e2) {
+          console.log(
+            `Attempt ${attempts}: Failed to parse JSON (raw length=${raw.length}).`
+          );
+          throw e2;
+        }
+      } else {
+        console.log(
+          `Attempt ${attempts}: Missing JSON object in response (raw length=${raw.length}).`
+        );
+        throw e;
+      }
+    }
 
     // Validate the puzzle data
     if (
@@ -286,12 +317,51 @@ const generateDateRange = (startDate: Date, days: number): string[] => {
 };
 
 async function main() {
-  console.log("🚀 Starting puzzle autogeneration for next 7 days...");
+  const toIso = (d: Date) => d.toISOString().split("T")[0];
+  const mode = process.argv[2];
+  const input = process.argv[3];
 
-  // Generate dates for the next 7 days
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dates = generateDateRange(tomorrow, 7);
+  const resolveDateStr = (a?: string): string | null => {
+    if (!a) {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      return toIso(t);
+    }
+    if (a === "today") return toIso(new Date());
+    if (a === "tomorrow") {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      return toIso(t);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(a)) return a;
+    return null;
+  };
+
+  let dates: string[] = [];
+  if (mode === "week") {
+    const baseStr = resolveDateStr(input);
+    if (!baseStr) {
+      console.log(
+        `⚠️  Unrecognized date argument: "${input}". Use: pnpm puzzles:generate week [YYYY-MM-DD|today|tomorrow]`
+      );
+      return;
+    }
+    const base = new Date(baseStr);
+    dates = generateDateRange(base, 7);
+    console.log(
+      `🚀 Starting puzzle autogeneration for a week from ${baseStr}...`
+    );
+  } else {
+    const targetDateStr = resolveDateStr(mode);
+    if (!targetDateStr) {
+      console.log(
+        `⚠️  Unrecognized date argument: "${mode}". Use YYYY-MM-DD | today | tomorrow | week [date]`
+      );
+      return;
+    }
+    dates = [targetDateStr];
+    console.log("🚀 Starting puzzle autogeneration for a single day...");
+  }
 
   const difficulties = [
     { name: "easy", isExtraHard: false },
@@ -358,8 +428,10 @@ async function main() {
           success = true;
         } catch (error) {
           retryCount++;
+          const message =
+            error instanceof Error ? error.message : String(error);
           console.log(
-            `  ⚠️  Attempt ${retryCount} failed for ${difficulty.name} puzzle: ${error.message}`
+            `  ⚠️  Attempt ${retryCount} failed for ${difficulty.name} puzzle: ${message}`
           );
 
           if (retryCount < maxRetries) {

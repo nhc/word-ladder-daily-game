@@ -323,10 +323,7 @@ export default function WordLadderGame({
               completed: isCompleted,
             }));
 
-            // Reset hint state for extra hard mode when advancing to next step
-            if (difficulty === "extra-hard") {
-              setShowHintLetters(false);
-            }
+            // No extra-hard hint reset needed in easy/hard branch
 
             if (isCompleted) {
               showModal("success", "Congratulations! 🎉", "Puzzle completed!");
