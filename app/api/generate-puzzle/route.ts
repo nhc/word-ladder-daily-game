@@ -55,8 +55,10 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are a Word Ladder puzzle generator. Create a sequence of 6 five-letter English words where each word differs from the previous by exactly one letter. 
 
 For ${difficulty} difficulty:
-- Easy: Use common, everyday words that most people would know
-- Hard: Use more challenging vocabulary, proper nouns, or less common words
+- Easy: Use common, everyday words that most people would know (like: house, water, light, table, chair, etc.)
+- Hard: Use more challenging vocabulary, less common words, or words that require more thought (like: quirk, fjord, glyph, etc.)
+
+IMPORTANT: Choose a completely different starting word than common words like "stone", "light", "house", "water". Be creative and varied!
 
 Generate a valid word ladder sequence and provide a clue for each transformation (except the starting word). Each clue should clearly describe the target word without being too obvious.
 
@@ -105,12 +107,12 @@ Example of a correct sequence:
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Generate a ${difficulty} word ladder puzzle for ${date}. Respond with ONLY valid JSON in the exact format specified.`,
+            content: `Generate a ${difficulty} word ladder puzzle for ${date}. Use a unique starting word that's different from common words. Be creative! Respond with ONLY valid JSON in the exact format specified.`,
           },
         ],
         response_format: { type: "json_object" },
         max_tokens: 1000,
-        temperature: 0.7,
+        temperature: 0.9,
       });
 
       puzzleData = JSON.parse(response.choices[0].message.content!);
