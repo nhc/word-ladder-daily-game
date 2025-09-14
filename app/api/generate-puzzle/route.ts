@@ -60,12 +60,13 @@ For ${difficulty} difficulty:
 
 Generate a valid word ladder sequence and provide a clue for each transformation (except the starting word). Each clue should clearly describe the target word without being too obvious.
 
-IMPORTANT RULES:
+CRITICAL VALIDATION RULES:
 - Each word must be exactly 5 letters
-- Each consecutive word must differ by exactly 1 letter
+- Each consecutive word must differ by exactly 1 letter (only one position can change)
 - NO DUPLICATE WORDS in the sequence
 - The wordSequence should include ALL 6 words including the startWord
 - wordSequence[0] = startWord, wordSequence[1] = first target, etc.
+- Example: "plant" → "plane" (only 't' changes to 'e'), "plane" → "plate" (only 'n' changes to 't')
 
 Respond with clean JSON only in this exact format:
 {
@@ -99,12 +100,12 @@ Example of a correct sequence:
       attempts++;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Generate a ${difficulty} word ladder puzzle for ${date}`,
+            content: `Generate a ${difficulty} word ladder puzzle for ${date}. Respond with ONLY valid JSON in the exact format specified.`,
           },
         ],
         response_format: { type: "json_object" },
@@ -120,26 +121,34 @@ Example of a correct sequence:
         !puzzleData.wordSequence ||
         !puzzleData.clues
       ) {
+        console.log(`Attempt ${attempts}: Missing required fields`);
         continue;
       }
 
       // Check for duplicates in word sequence
       const uniqueWords = new Set(puzzleData.wordSequence);
       if (uniqueWords.size !== puzzleData.wordSequence.length) {
+        console.log(`Attempt ${attempts}: Duplicate words found`);
         continue;
       }
 
       // Check that startWord matches first word in sequence
       if (puzzleData.startWord !== puzzleData.wordSequence[0]) {
+        console.log(`Attempt ${attempts}: startWord doesn't match first word`);
         continue;
       }
 
       // Validate that each word differs by exactly 1 letter from the previous
       if (!validateWordLadder(puzzleData.wordSequence)) {
+        console.log(
+          `Attempt ${attempts}: Word ladder validation failed for sequence:`,
+          puzzleData.wordSequence
+        );
         continue;
       }
 
       // If we get here, the puzzle is valid
+      console.log(`Attempt ${attempts}: Valid puzzle generated!`);
       break;
     }
 
