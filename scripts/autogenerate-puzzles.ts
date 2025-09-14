@@ -196,7 +196,7 @@ Example of a correct sequence:
     }
 
     const baseParams: any = {
-      model: isExtraHard ? "gpt-5" : "gpt-4o",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -210,7 +210,8 @@ Example of a correct sequence:
     };
 
     if (isExtraHard) {
-      baseParams.max_completion_tokens = 1200;
+      baseParams.max_tokens = 1200;
+      baseParams.temperature = 0.5;
     } else {
       baseParams.max_tokens = 1000;
       baseParams.temperature = 0.7 + attempts * 0.1;

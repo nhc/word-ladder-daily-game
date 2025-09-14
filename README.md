@@ -187,7 +187,7 @@ app/
 ├── app/
 │   ├── api/           # API routes
 │   │   ├── daily-puzzle/
-│   │   ├── generate-puzzle/
+│   │   ├── daily-puzzle/
 │   │   └── validate-word/
 │   └── page.tsx       # Main page
 ├── lib/               # Utilities and database
