@@ -548,7 +548,9 @@ export default function WordLadderGame({
                     </div>
                     <p className="text-sm mt-4 text-gray-300">
                       {difficulty === "extra-hard"
-                        ? `Click a purple letter to change it (${lettersToChange.size} letters need changing)`
+                        ? showHintLetters
+                          ? `Click a purple letter to change it (${lettersToChange.size} letters need changing)`
+                          : "Click a blue letter to change it"
                         : "Click a letter to change it"}
                     </p>
                   </div>
